@@ -1,0 +1,56 @@
+Table SEDE as S {
+  id int [pk, increment]
+  num_complejos int [not null]
+  presupuesto float [not null]
+}
+
+Table COMPLEJO as C {
+  id_complejo int [pk, increment]
+  id_sede int [ref: > S.id]
+  area_total float [not null]
+  tipo Enum('Deportivo', 'Polideportivo')
+  id_jefe int [ref: > P.id]
+}
+
+Table PERSONA as P {
+  id int [pk, increment]
+  nombre varchar [not null]
+  apellido1 varchar [not null]
+  apellido2 varchar
+}
+
+Table DEPORTE as D {
+  id_deporte int [pk, increment]
+  nombre varchar [not null]
+}
+
+Table EVENTO as E {
+  id_evento int [pk, increment]
+  fecha datetime [not null]
+  nombre varchar [not null]
+  duracion time [not null]
+  num_participantes int [not null]
+  num_comisarios int [not null]
+  id_complejo int [ref: > C.id_complejo]
+}
+
+Table COMISARIO as Co {
+  id_evento int [ref: > E.id_evento]
+  id_persona int [ref: > P.id]
+  tipo Enum('Juez', 'Observador')
+}
+
+Table DEPORTESxCOMPLEJO as DC {
+  id_deporte int [ref: > D.id_deporte]
+  id_complejo int [ref: > C.id_complejo]
+}
+
+Table EQUIPAMIENTO as Eq {
+  id_equipamiento int [pk]
+  nombre varchar [not null]
+}
+
+Table EQUIPO_NECESARIO as EN {
+  id_equipamiento int [ref: > Eq.id_equipamiento]
+  id_evento int [ref: > E.id_evento]
+}
