@@ -1,0 +1,119 @@
+DROP DATABASE IF EXISTS Olimpiada;
+CREATE DATABASE Olimpiada;
+USE Olimpiada;
+
+DROP TABLE IF EXISTS `SEDE`;
+CREATE TABLE `SEDE` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `num_complejos` INT NOT NULL,
+  `presupuesto` FLOAT NOT NULL
+);
+
+DROP TABLE IF EXISTS `COMPLEJO`;
+CREATE TABLE `COMPLEJO` (
+  `id_complejo` INT PRIMARY KEY AUTO_INCREMENT,
+  `id_sede` INT,
+  `area_total` FLOAT NOT NULL,
+  `tipo` ENUM('Deportivo', 'Polideportivo'),
+  `id_jefe` INT UNIQUE
+);
+
+DROP TABLE IF EXISTS `PERSONA`;
+CREATE TABLE `PERSONA` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `nombre` VARCHAR(64) NOT NULL,
+  `apellido1` VARCHAR(32) NOT NULL,
+  `apellido2` VARCHAR(32)
+);
+
+DROP TABLE IF EXISTS `DEPORTE`;
+CREATE TABLE `DEPORTE` (
+  `id_deporte` INT PRIMARY KEY AUTO_INCREMENT,
+  `nombre` VARCHAR(32) NOT NULL
+);
+
+DROP TABLE IF EXISTS `EVENTO`;
+CREATE TABLE `EVENTO` (
+  `id_evento` INT PRIMARY KEY AUTO_INCREMENT,
+  `fecha` DATETIME NOT NULL,
+  `nombre` VARCHAR(60) NOT NULL,
+  `duracion` TIME NOT NULL,
+  `num_participantes` INT NOT NULL,
+  `num_comisarios` INT NOT NULL,
+  `id_complejo` INT,
+  `id_deporte` INT
+);
+
+DROP TABLE IF EXISTS `COMISARIO`;
+CREATE TABLE `COMISARIO` (
+  `id_evento` INT,
+  `id_persona` INT,
+  `tipo` ENUM('Juez', 'Observador')
+);
+
+DROP TABLE IF EXISTS `DEPORTESxCOMPLEJO`;
+CREATE TABLE `DEPORTESxCOMPLEJO` (
+  `id_deporte` INT,
+  `id_complejo` INT,
+  CONSTRAINT UNIQUE (id_deporte, id_complejo)
+);
+
+DROP TABLE IF EXISTS `EQUIPAMIENTO`;
+CREATE TABLE `EQUIPAMIENTO` (
+  `id_equipamiento` int PRIMARY KEY,
+  `nombre` varchar(255) NOT NULL
+);
+
+DROP TABLE IF EXISTS `EQUIPO_NECESARIO`;
+CREATE TABLE `EQUIPO_NECESARIO` (
+  `id_equipamiento` int,
+  `id_evento` int
+);
+
+
+ALTER TABLE `COMPLEJO` ADD FOREIGN KEY (`id_sede`) REFERENCES `SEDE` (`id`);
+
+ALTER TABLE `COMPLEJO` ADD FOREIGN KEY (`id_jefe`) REFERENCES `PERSONA` (`id`);
+
+ALTER TABLE `EVENTO` ADD FOREIGN KEY (`id_complejo`) REFERENCES `COMPLEJO` (`id_complejo`);
+
+ALTER TABLE `EVENTO` ADD FOREIGN KEY (`id_deporte`) REFERENCES `DEPORTE` (`id_deporte`);
+
+ALTER TABLE `COMISARIO` ADD FOREIGN KEY (`id_evento`) REFERENCES `EVENTO` (`id_evento`);
+
+ALTER TABLE `COMISARIO` ADD FOREIGN KEY (`id_persona`) REFERENCES `PERSONA` (`id`);
+
+ALTER TABLE `DEPORTESxCOMPLEJO` ADD FOREIGN KEY (`id_deporte`) REFERENCES `DEPORTE` (`id_deporte`);
+
+ALTER TABLE `DEPORTESxCOMPLEJO` ADD FOREIGN KEY (`id_complejo`) REFERENCES `COMPLEJO` (`id_complejo`);
+
+ALTER TABLE `EQUIPO_NECESARIO` ADD FOREIGN KEY (`id_equipamiento`) REFERENCES `EQUIPAMIENTO` (`id_equipamiento`);
+
+ALTER TABLE `EQUIPO_NECESARIO` ADD FOREIGN KEY (`id_evento`) REFERENCES `EVENTO` (`id_evento`);
+
+CREATE TRIGGER NumeroComisarios
+BEFORE INSERT ON COMISARIO
+FOR EACH ROW
+BEGIN 
+    SET @Asignados = (SELECT COUNT(*) FROM COMISARIO WHERE id_evento = NEW.id_evento);
+    SET @Cantidad = (SELECT num_comisarios FROM EVENTO);
+    IF (Asignados = Cantidad) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Numero de Comisarios alcanzados para evento';
+    END IF;
+END;
+
+CREATE TRIGGER Complejo_Adecuado
+BEFORE INSERT ON EVENTO
+FOR EACH ROW
+BEGIN
+    SET @Deportes = (SELECT id_deporte FROM DEPORTESxCOMPLEJO WHERE id_complejo = NEW.id_complejo);
+    IF (NEW.id_deporte NOT IN @Deportes) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Complejo no apto para el evento';
+END;
+
+CREATE TRIGGER Tipo_Complejo
+BEFORE INSERT ON DEPORTESxCOMPLEJO
+FOR EACH ROW
+BEGIN
+
+END;
