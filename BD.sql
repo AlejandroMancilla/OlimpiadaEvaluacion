@@ -156,3 +156,10 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Complejo no polideportivo";
     end if;
 end;
+
+# Función para validar Fecha
+DROP FUNCTION IF EXISTS validar_fecha_entre;
+CREATE FUNCTION validar_fecha_entre (FECHA DATETIME) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN ((FECHA BETWEEN))
+END;
