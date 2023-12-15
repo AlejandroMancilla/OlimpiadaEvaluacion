@@ -13,9 +13,11 @@ DROP TABLE IF EXISTS `COMPLEJO`;
 CREATE TABLE `COMPLEJO` (
   `id_complejo` INT PRIMARY KEY AUTO_INCREMENT,
   `id_sede` INT,
+  `id_localizacion` INT NOT NULL,
   `area_total` FLOAT NOT NULL,
-  `tipo` ENUM('Deportivo', 'Polideportivo'),
-  `id_jefe` INT UNIQUE
+  `tipo` ENUM('Polideportivo', 'Deportivo'),
+  `id_jefe` INT UNIQUE,
+  CONSTRAINT UNIQUE (id_sede, id_localizacion)
 );
 
 DROP TABLE IF EXISTS `PERSONA`;
@@ -60,7 +62,7 @@ CREATE TABLE `DEPORTESxCOMPLEJO` (
 
 DROP TABLE IF EXISTS `EQUIPAMIENTO`;
 CREATE TABLE `EQUIPAMIENTO` (
-  `id_equipamiento` int PRIMARY KEY,
+  `id_equipamiento` int PRIMARY KEY AUTO_INCREMENT,
   `nombre` varchar(255) NOT NULL
 );
 
@@ -91,29 +93,66 @@ ALTER TABLE `EQUIPO_NECESARIO` ADD FOREIGN KEY (`id_equipamiento`) REFERENCES `E
 
 ALTER TABLE `EQUIPO_NECESARIO` ADD FOREIGN KEY (`id_evento`) REFERENCES `EVENTO` (`id_evento`);
 
-CREATE TRIGGER NumeroComisarios
+# TRIGEGERS VALIDACIONES
+# Cantidad de Comisarios asignados a un evento
+DROP TRIGGER IF EXISTS cantidadComisarios;
+CREATE TRIGGER cantidadComisarios
 BEFORE INSERT ON COMISARIO
 FOR EACH ROW
-BEGIN 
-    SET @Asignados = (SELECT COUNT(*) FROM COMISARIO WHERE id_evento = NEW.id_evento);
-    SET @Cantidad = (SELECT num_comisarios FROM EVENTO);
-    IF (Asignados = Cantidad) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Numero de Comisarios alcanzados para evento';
+BEGIN
+    SET @comisarios = (SELECT COUNT(*) FROM `COMISARIO` WHERE id_evento = NEW.id_evento);
+    SET @cantidad = (SELECT num_comisarios FROM EVENTO WHERE id_evento = NEW.id_evento);
+    if (@comisarios = @cantidad) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Ya fueron asignados todos los comisarios para este evento";
     END IF;
-END;
+end;
 
-CREATE TRIGGER Complejo_Adecuado
+# Cantidad de complejos en una sede
+DROP TRIGGER IF EXISTS cantidad_complejos;
+CREATE TRIGGER cantidad_complejos
+BEFORE INSERT ON COMPLEJO
+FOR EACH ROW
+BEGIN
+    SET @complejos = (SELECT COUNT(*) FROM COMPLEJO WHERE id_sede = NEW.id_sede);
+     SET @cantidad = (SELECT num_complejos FROM SEDE where id = NEW.id_sede);
+    if (@complejos = @cantidad) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Ya fueron asignados todos los complejos para esta sede";
+    END IF;
+end;
+
+# Función Validar Deporte en un Complejo
+CREATE FUNCTION validar_deporte_complejo (DEPORTE INT, COMPLEJO INT ) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN (DEPORTE in (SELECT id_deporte FROM `DEPORTESxCOMPLEJO` WHERE id_complejo = COMPLEJO));
+end;
+# Función Validar Complejo Deportivo o Polideportivo
+DROP FUNCTION IF EXISTS validar_tipo_complejo;
+CREATE FUNCTION validar_tipo_complejo (COMPLEJO INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN ((COMPLEJO IN (SELECT id_complejo FROM `COMPLEJO` WHERE tipo = 2)) AND (COMPLEJO IN (SELECT id_complejo FROM `DEPORTESxCOMPLEJO`)));
+end;
+
+# Complejo Apto para Evento
+DROP TRIGGER IF EXISTS evento_complejo;
+CREATE TRIGGER evento_complejo
 BEFORE INSERT ON EVENTO
 FOR EACH ROW
 BEGIN
-    SET @Deportes = (SELECT id_deporte FROM DEPORTESxCOMPLEJO WHERE id_complejo = NEW.id_complejo);
-    IF (NEW.id_deporte NOT IN @Deportes) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Complejo no apto para el evento';
-END;
+    SET @deporte = NEW.id_deporte;
+    SET @complejo = NEW.id_complejo;
+    IF NOT validar_deporte_complejo(@deporte, @complejo) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Complejo no apto para el evento";
+    end if;
+end;
 
-CREATE TRIGGER Tipo_Complejo
+# Complejo Polideportivo o No
+DROP TRIGGER IF EXISTS tipo_complejo;
+CREATE TRIGGER tipo_complejo
 BEFORE INSERT ON DEPORTESxCOMPLEJO
 FOR EACH ROW
 BEGIN
-
-END;
+    SET @complejo = NEW.id_complejo;
+    IF validar_tipo_complejo(@complejo) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Complejo no polideportivo";
+    end if;
+end;
