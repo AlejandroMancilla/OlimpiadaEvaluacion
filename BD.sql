@@ -140,12 +140,20 @@ FOR EACH ROW
 BEGIN
     SET @deporte = NEW.id_deporte;
     SET @complejo = NEW.id_complejo;
+    SET @fecha = NEW.fecha;
+    SET @fecha_fin = ADDTIME(NEW.fecha, NEW.duracion);
     IF NOT validar_deporte_complejo(@deporte, @complejo) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Complejo no apto para el evento";
     end if;
+    IF fecha_evento(@fecha, @complejo, @deporte) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Fecha no disponible para el tipo de evento";
+    END IF;
+    IF fecha_evento(@fecha_fin, @complejo, @deporte) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Evento se sobrepone a uno existente en el complejo";
+    END IF;
 end;
 
-# Complejo Polideportivo o No
+/* Complejo Polideportivo o No */
 DROP TRIGGER IF EXISTS tipo_complejo;
 CREATE TRIGGER tipo_complejo
 BEFORE INSERT ON DEPORTESxCOMPLEJO
@@ -157,9 +165,19 @@ BEGIN
     end if;
 end;
 
-# Función para validar Fecha
-DROP FUNCTION IF EXISTS validar_fecha_entre;
-CREATE FUNCTION validar_fecha_entre (FECHA DATETIME) RETURNS BOOLEAN DETERMINISTIC
+
+CREATE OR REPLACE VIEW fechas_eventos AS
+    SELECT EVENTO.id_evento AS id, EVENTO.fecha AS FECHA_INICIO, ADDTIME(EVENTO.fecha, EVENTO.duracion) AS FECHA_FINAL, EVENTO.id_deporte AS id_deporte, EVENTO.id_complejo AS id_complejo FROM EVENTO;
+
+CREATE FUNCTION fecha_evento(fecha_nueva DATETIME, complejo INT, deporte INT) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN ((FECHA BETWEEN))
-END;
+    RETURN (
+    SELECT
+    1 IN
+    (SELECT fecha_nueva between FECHA_INICIO and FECHA_FINAL
+     FROM fechas_eventos
+     WHERE id IN
+           (SELECT fechas_eventos.id
+            FROM fechas_eventos
+            WHERE fechas_eventos.id_complejo = complejo AND fechas_eventos.id_deporte = deporte)));
+end;
