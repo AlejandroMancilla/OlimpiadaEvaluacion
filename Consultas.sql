@@ -55,4 +55,4 @@ WHERE C.tipo = 1;
 
 # VISTA FECHAS
 CREATE OR REPLACE VIEW fechas_eventos AS
-    SELECT EVENTO.id_evento, EVENTO.fecha, ADDTIME(EVENTO.fecha, EVENTO.duracion), EVENTO.id_deporte FROM EVENTO;
+    SELECT EVENTO.id_evento, EVENTO.fecha AS FECHA_INICIO, ADDTIME(EVENTO.fecha, EVENTO.duracion) AS FECHA_FINAL, EVENTO.id_deporte FROM EVENTO;
