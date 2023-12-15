@@ -94,9 +94,6 @@ VALUES
 ('2023-12-14 16:00:00', 'Campeonato de rugby', '10:00:00', 90, 19, 2, 5),
 ('2023-12-14 18:00:00', 'Amistoso de Tenis', '06:00:00', 10, 2, 4, 4);
 
-INSERT INTO `EVENTO` (fecha, nombre, duracion, num_participantes, num_comisarios, id_complejo, id_deporte)
-VALUES
-('2023-12-12 13:00:00', 'Torneo de fútbol', '09:00:00', 20, 3, 1, 1);
 
 # POBLACIÓN TABLA COMISARIO
 INSERT INTO `COMISARIO`(id_evento, id_persona, tipo)
